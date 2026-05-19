@@ -1,9 +1,10 @@
 import SwiftUI
 
 struct RootView: View {
-    private enum Screen { case home, modes, block }
+    private enum Screen { case home, modes, block, durak }
     @State private var screen: Screen = .home
     @StateObject private var blockGame = BlockGame()
+    @StateObject private var durakGame = DurakGame()
 
     var body: some View {
         ZStack {
@@ -13,6 +14,9 @@ struct RootView: View {
             case .modes: modeMenu
             case .block:
                 BlockGameView(game: blockGame) { screen = .modes }
+                    .transition(.opacity)
+            case .durak:
+                DurakView(game: durakGame) { screen = .home }
                     .transition(.opacity)
             }
         }
@@ -40,8 +44,11 @@ struct RootView: View {
                      icon: "square.grid.3x3.fill", enabled: true) {
                     screen = .modes
                 }
-                card(title: "Дурак", subtitle: "Скоро",
-                     icon: "suit.spade.fill", enabled: false) {}
+                card(title: "Дурак", subtitle: "Против бота",
+                     icon: "suit.spade.fill", enabled: true) {
+                    durakGame.newGame()
+                    screen = .durak
+                }
                 card(title: "Ещё режимы", subtitle: "В разработке",
                      icon: "sparkles", enabled: false) {}
             }
