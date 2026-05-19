@@ -2,9 +2,12 @@ import SwiftUI
 import UIKit
 
 enum Haptics {
-    static func tap()  { UIImpactFeedbackGenerator(style: .light).impactOccurred() }
-    static func clr()  { UIImpactFeedbackGenerator(style: .medium).impactOccurred() }
-    static func over() { UINotificationFeedbackGenerator().notificationOccurred(.warning) }
+    private static var on: Bool {
+        (UserDefaults.standard.object(forKey: "kubik.haptics") as? Bool) ?? true
+    }
+    static func tap()  { if on { UIImpactFeedbackGenerator(style: .light).impactOccurred() } }
+    static func clr()  { if on { UIImpactFeedbackGenerator(style: .medium).impactOccurred() } }
+    static func over() { if on { UINotificationFeedbackGenerator().notificationOccurred(.warning) } }
 }
 
 struct BlockGameView: View {

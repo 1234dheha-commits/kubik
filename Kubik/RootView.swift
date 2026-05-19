@@ -5,6 +5,7 @@ struct RootView: View {
     @State private var screen: Screen = .home
     @StateObject private var blockGame = BlockGame()
     @StateObject private var durakGame = DurakGame()
+    @State private var showSettings = false
 
     var body: some View {
         ZStack {
@@ -21,12 +22,26 @@ struct RootView: View {
             }
         }
         .animation(.easeInOut(duration: 0.2), value: screen)
+        .sheet(isPresented: $showSettings) {
+            SettingsView { showSettings = false }
+        }
     }
 
     // MARK: Home
 
     private var home: some View {
         VStack(spacing: 0) {
+            HStack {
+                Spacer()
+                Button { showSettings = true } label: {
+                    Image(systemName: "gearshape.fill")
+                        .font(.system(size: 17, weight: .bold))
+                        .foregroundStyle(Theme.muted)
+                        .frame(width: 40, height: 40)
+                        .background(Theme.panel, in: Circle())
+                }
+            }
+            .padding(.horizontal, 20).padding(.top, 12)
             Spacer()
             VStack(spacing: 6) {
                 Text("KUBIK")
