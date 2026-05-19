@@ -1,4 +1,11 @@
 import SwiftUI
+import UIKit
+
+enum Haptics {
+    static func tap()  { UIImpactFeedbackGenerator(style: .light).impactOccurred() }
+    static func clr()  { UIImpactFeedbackGenerator(style: .medium).impactOccurred() }
+    static func over() { UINotificationFeedbackGenerator().notificationOccurred(.warning) }
+}
 
 struct BlockGameView: View {
     @ObservedObject var game: BlockGame
@@ -7,10 +14,16 @@ struct BlockGameView: View {
     @State private var boardOrigin: CGPoint = .zero
     @State private var boardSide: CGFloat = 1
     @State private var dragIndex: Int?
-    @State private var dragPoint: CGPoint = .zero      // finger, "root" space
+    @State private var dragPoint: CGPoint = .zero
+    @State private var popup: Gain?
+    @State private var popupShown = false
 
     private var cell: CGFloat { boardSide / CGFloat(BlockGame.size) }
     private func inset(_ s: CGFloat) -> CGFloat { s * 0.07 }
+
+    private func timeStr(_ s: Int) -> String {
+        String(format: "%d:%02d", s / 60, s % 60)
+    }
 
     var body: some View {
         GeometryReader { geo in
@@ -27,6 +40,16 @@ struct BlockGameView: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)
 
+                if let p = popup {
+                    Text("+\(p.amount)")
+                        .font(.system(size: 30, weight: .heavy))
+                        .foregroundStyle(Theme.accent)
+                        .shadow(color: .black.opacity(0.4), radius: 4)
+                        .offset(y: popupShown ? -130 : -70)
+                        .opacity(popupShown ? 0 : 1)
+                        .allowsHitTesting(false)
+                }
+
                 if let di = dragIndex, di < game.tray.count,
                    let piece = game.tray[di] {
                     floating(piece)
@@ -34,6 +57,16 @@ struct BlockGameView: View {
             }
             .coordinateSpace(name: "root")
             .overlay { if game.gameOver { gameOverOverlay } }
+        }
+        .onChange(of: game.gain) { _, g in
+            guard let g else { return }
+            popup = g
+            popupShown = false
+            withAnimation(.easeOut(duration: 0.7)) { popupShown = true }
+            if g.amount >= 16 { Haptics.clr() } else { Haptics.tap() }
+        }
+        .onChange(of: game.gameOver) { _, over in
+            if over { Haptics.over() }
         }
     }
 
@@ -50,22 +83,26 @@ struct BlockGameView: View {
             }
             Spacer()
             VStack(spacing: 1) {
-                Text("Счёт").font(.system(size: 11, weight: .semibold))
+                Text(game.mode == .timed
+                     ? timeStr(game.timeLeft) : "\(game.score)")
+                    .font(.system(size: 26, weight: .heavy).monospacedDigit())
+                    .foregroundStyle(game.mode == .timed && game.timeLeft <= 15
+                                     ? Color.red : Theme.text)
+                Text(game.mode == .timed
+                     ? "Счёт \(game.score)" : game.mode.title)
+                    .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(Theme.muted)
-                Text("\(game.score)")
-                    .font(.system(size: 24, weight: .heavy).monospacedDigit())
-                    .foregroundStyle(Theme.text)
             }
             Spacer()
             VStack(spacing: 1) {
+                Text("\(max(game.best, game.score))")
+                    .font(.system(size: 26, weight: .heavy).monospacedDigit())
+                    .foregroundStyle(Theme.accent)
                 Text("Рекорд").font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(Theme.muted)
-                Text("\(max(game.best, game.score))")
-                    .font(.system(size: 24, weight: .heavy).monospacedDigit())
-                    .foregroundStyle(Theme.accent)
             }
             Spacer()
-            Button { game.newGame() } label: {
+            Button { game.restart() } label: {
                 Image(systemName: "arrow.counterclockwise")
                     .font(.system(size: 17, weight: .bold))
                     .foregroundStyle(Theme.text)
@@ -75,7 +112,7 @@ struct BlockGameView: View {
         }
     }
 
-    // MARK: Board (fixed square)
+    // MARK: Board
 
     private func board(side: CGFloat) -> some View {
         let cs = side / CGFloat(BlockGame.size)
@@ -101,6 +138,7 @@ struct BlockGameView: View {
             }
         }
         .frame(width: side, height: side, alignment: .topLeading)
+        .animation(.easeInOut(duration: 0.16), value: game.grid)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .fill(Theme.panel)
@@ -131,9 +169,7 @@ struct BlockGameView: View {
 
     private var tray: some View {
         HStack(spacing: 12) {
-            ForEach(0..<3, id: \.self) { i in
-                trayCell(i)
-            }
+            ForEach(0..<3, id: \.self) { i in trayCell(i) }
         }
         .frame(height: 104)
     }
@@ -168,18 +204,18 @@ struct BlockGameView: View {
         .frame(height: 100)
     }
 
-    // MARK: Floating piece (follows the finger, lifted above it)
+    // MARK: Floating piece
 
     private func floating(_ piece: Piece) -> some View {
         let w = CGFloat(piece.cols) * cell
         let h = CGFloat(piece.rows) * cell
         return pieceShape(piece, cell: cell)
             .frame(width: w, height: h, alignment: .topLeading)
+            .scaleEffect(1.06)
             .position(x: dragPoint.x, y: dragPoint.y - h / 2 - cell * 0.6)
             .allowsHitTesting(false)
     }
 
-    /// Board base cell the floating piece currently targets, or nil.
     private func targetBase(_ piece: Piece) -> GridPoint? {
         guard boardSide > 1 else { return nil }
         let w = CGFloat(piece.cols) * cell
@@ -213,16 +249,16 @@ struct BlockGameView: View {
         ZStack {
             Color.black.opacity(0.6).ignoresSafeArea()
             VStack(spacing: 14) {
-                Text("Игра окончена")
+                Text(game.mode == .timed ? "Время вышло" : "Игра окончена")
                     .font(.system(size: 24, weight: .heavy))
                     .foregroundStyle(Theme.text)
                 Text("Счёт \(game.score)")
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(Theme.muted)
-                Text("Рекорд \(game.best)")
+                Text("Рекорд \(game.best) · \(game.mode.title)")
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(Theme.accent)
-                Button { game.newGame() } label: {
+                Button { game.restart() } label: {
                     Text("Ещё раз")
                         .font(.system(size: 17, weight: .bold))
                         .foregroundStyle(.white)

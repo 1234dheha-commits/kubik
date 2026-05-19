@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct RootView: View {
-    private enum Screen { case home, block }
+    private enum Screen { case home, modes, block }
     @State private var screen: Screen = .home
     @StateObject private var blockGame = BlockGame()
 
@@ -9,17 +9,17 @@ struct RootView: View {
         ZStack {
             Theme.bg.ignoresSafeArea()
             switch screen {
-            case .home:
-                home
+            case .home:  home
+            case .modes: modeMenu
             case .block:
-                BlockGameView(game: blockGame) {
-                    screen = .home
-                }
-                .transition(.opacity)
+                BlockGameView(game: blockGame) { screen = .modes }
+                    .transition(.opacity)
             }
         }
         .animation(.easeInOut(duration: 0.2), value: screen)
     }
+
+    // MARK: Home
 
     private var home: some View {
         VStack(spacing: 0) {
@@ -36,26 +36,14 @@ struct RootView: View {
             .padding(.bottom, 36)
 
             VStack(spacing: 14) {
-                gameCard(
-                    title: "Блоки",
-                    subtitle: "Рекорд \(blockGame.best)",
-                    icon: "square.grid.3x3.fill",
-                    enabled: true
-                ) { screen = .block }
-
-                gameCard(
-                    title: "Дурак",
-                    subtitle: "Онлайн, скоро",
-                    icon: "suit.spade.fill",
-                    enabled: false
-                ) {}
-
-                gameCard(
-                    title: "Ещё режимы",
-                    subtitle: "В разработке",
-                    icon: "sparkles",
-                    enabled: false
-                ) {}
+                card(title: "Блоки", subtitle: "3 режима",
+                     icon: "square.grid.3x3.fill", enabled: true) {
+                    screen = .modes
+                }
+                card(title: "Дурак", subtitle: "Скоро",
+                     icon: "suit.spade.fill", enabled: false) {}
+                card(title: "Ещё режимы", subtitle: "В разработке",
+                     icon: "sparkles", enabled: false) {}
             }
             .padding(.horizontal, 26)
 
@@ -67,8 +55,46 @@ struct RootView: View {
         }
     }
 
-    private func gameCard(title: String, subtitle: String, icon: String,
-                          enabled: Bool, action: @escaping () -> Void) -> some View {
+    // MARK: Mode menu
+
+    private var modeMenu: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Button { screen = .home } label: {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundStyle(Theme.text)
+                        .frame(width: 40, height: 40)
+                        .background(Theme.panel, in: Circle())
+                }
+                Spacer()
+            }
+            .padding(.horizontal, 20).padding(.top, 12)
+
+            Spacer()
+            Text("Блоки")
+                .font(.system(size: 30, weight: .heavy))
+                .foregroundStyle(Theme.text)
+                .padding(.bottom, 24)
+            VStack(spacing: 14) {
+                ForEach(GameMode.allCases) { m in
+                    card(title: m.title, subtitle: m.subtitle,
+                         icon: m.icon, enabled: true) {
+                        blockGame.start(m)
+                        screen = .block
+                    }
+                }
+            }
+            .padding(.horizontal, 26)
+            Spacer()
+            Spacer()
+        }
+    }
+
+    // MARK: Card
+
+    private func card(title: String, subtitle: String, icon: String,
+                      enabled: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack(spacing: 16) {
                 Image(systemName: icon)
