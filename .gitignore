@@ -1,0 +1,8 @@
+*.xcodeproj
+build/
+DerivedData/
+.DS_Store
+*.ipa
+*.gitmsg.tmp
+.gitmsg.tmp
+xcuserdata/
