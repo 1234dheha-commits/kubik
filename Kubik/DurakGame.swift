@@ -133,9 +133,18 @@ final class DurakGame: ObservableObject {
 
     private func botDefend() {
         guard !over, let p = openPair else { return }
+        // Cheapest sensible card: non-trump before trump, then by rank.
+        // Skip a trump answer to a low non-trump only when a deeper deck
+        // makes saving the trump clearly worth it.
         let cands = bot.filter { beats($0, p.attack) }
             .sorted { ($0.suit == trump ? 1 : 0, $0.rank) < ($1.suit == trump ? 1 : 0, $1.rank) }
-        if let d = cands.first, d.rank - p.attack.rank < 7 || p.attack.suit == trump {
+        var pick = cands.first
+        if let d = pick, d.suit == trump, p.attack.suit != trump,
+           p.attack.rank <= 9, deck.count > 8,
+           !cands.contains(where: { $0.suit != trump }) {
+            pick = nil   // not worth burning a trump this early
+        }
+        if let d = pick {
             if let i = table.firstIndex(where: { $0.id == p.id }) {
                 table[i].defense = d
                 bot.removeAll { $0.id == d.id }
