@@ -171,6 +171,7 @@ final class DurakGame: ObservableObject {
         bot.removeAll { $0.id == card.id }
         table.append(Pair(attack: card))
         humanIsDefender = true
+        humanAttacking = false
         message = "Соперник атакует \(card.label)\(card.suit.sym). Защищайтесь или Взять."
     }
 

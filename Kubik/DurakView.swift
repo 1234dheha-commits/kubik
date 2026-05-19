@@ -76,6 +76,13 @@ struct DurakView: View {
             ForEach(game.table) { p in
                 ZStack(alignment: .topLeading) {
                     cardView(p.attack)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 10,
+                                             style: .continuous)
+                                .stroke(Theme.accent,
+                                        lineWidth: (p.defense == nil
+                                            && game.humanIsDefender) ? 3 : 0)
+                        )
                     if let d = p.defense {
                         cardView(d).offset(x: 16, y: 22)
                     }
